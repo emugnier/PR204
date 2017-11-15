@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include <netinet/ip.h>
 
 /* autres includes (eventuellement) */
 
@@ -18,11 +20,11 @@ struct dsm_proc_conn  {
    int rank;
    /* a completer */
 };
-typedef struct dsm_proc_conn dsm_proc_conn_t; 
+typedef struct dsm_proc_conn dsm_proc_conn_t;
 
 /* definition du type des infos */
 /* d'identification des processus dsm */
-struct dsm_proc {   
+struct dsm_proc {
   pid_t pid;
   dsm_proc_conn_t connect_info;
 };

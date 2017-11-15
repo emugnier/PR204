@@ -24,11 +24,10 @@ void sigchld_handler(int sig)
    /* pour eviter les zombies */
 }
 
-int filehandler_nb(const char* path,int * number){
+int filehandler_nb(FILE * file,int * number){
   char* buffer =  malloc(sizeof(char)*512);
   int n;
   memset(buffer,0,sizeof(char)*512);
-  FILE * file = fopen(path,"r");
   if(file==NULL){
     perror("fichier pas trouvé");
   }
@@ -38,11 +37,11 @@ int filehandler_nb(const char* path,int * number){
   *number=atoi(buffer);
   printf("%d\n",*number);
   free(buffer);
-  fclose(file);
+
   return 0;
 }
 
-int filehandler_name(char ** tab,const char* path){
+/*int filehandler_name(char ** tab,const char* path){
   char* buffer =  malloc(sizeof(char)*512);
   size_t n;
   memset(buffer,0,sizeof(char)*512);
@@ -52,14 +51,33 @@ int filehandler_name(char ** tab,const char* path){
   tab = malloc(sizeof(char*)*n);
   int i=0;
   while ((getline(&buffer,&n,file)!=-1)){
-    tab[i] = malloc(sizeof(strlen(buffer)*sizeof(char)));
+    //printf("%s\n",buffer );
+    //printf("len:%d\n",strlen(buffer) );
+    tab[i] = malloc(strlen(buffer)*sizeof(char));
     memset(tab[i],0,strlen(buffer)*sizeof(char));
     strncpy(tab[i],buffer,strlen(buffer)-1);
+    printf("%s\n",tab[i] );
     i=i+1;
     memset(buffer,0,sizeof(char)*512);
   }
   return 0;
+}*/
+
+int filehandler_name(char ** tab,FILE * file){
+  char* buffer =  malloc(sizeof(char)*512);
+  size_t n;
+  memset(buffer,0,sizeof(char)*512);
+  getline(&buffer,&n,file);
+  *tab = malloc(strlen(buffer)*sizeof(char));
+  memset(*tab,0,strlen(buffer)*sizeof(char));
+  strncpy(*tab,buffer,strlen(buffer)-1);
+  printf("dans la fonction%s\n",*tab );
+  free(buffer);
+  return 0;
 }
+
+
+
 
 int main(int argc, char *argv[])
 {
@@ -69,7 +87,9 @@ int main(int argc, char *argv[])
      pid_t pid;
      int num_procs = 0;
      int i;
+     int cpt;
 
+     FILE * file = fopen("test.txt","r");
      /* Mise en place d'un traitant pour recuperer les fils zombies*/
      struct sigaction action_sigchild;
      memset(&action_sigchild,0,sizeof(action_sigchild));
@@ -78,9 +98,15 @@ int main(int argc, char *argv[])
      if( sigaction(SIGCHLD,&action_sigchild,NULL)==-1){
        perror("traitant signal");
      }
-     filehandler_nb("test.txt",&num_procs);
+     filehandler_nb(file,&num_procs);
+
+
      char * tab[num_procs];
-     filehandler_name(tab,"test.txt");
+     for (cpt=0;cpt<num_procs; cpt++){
+       filehandler_name(&tab[cpt],file);
+       printf("%d\n",cpt);
+     }
+     fclose(file);
 
      /* lecture du fichier de machines */
      /* 1- on recupere le nombre de processus a lancer */
@@ -88,33 +114,60 @@ int main(int argc, char *argv[])
      /* la machine est un des elements d'identification */
 
      /* creation de la socket d'ecoute */
+
+  //int sock=creer_socket(prop, port_num);
+	//specify the socket to be a server socket and listen for at most 20 concurrent client
+	/*if(listen(sock , nbmachines)==-1){
+		perror("listen");
+	}*/
      /* + ecoute effective */
 
      /* creation des fils */
-     num_procs=0;
-     for(i = 0; i < num_procs ; i++) {
 
+     num_procs=1;
+     for(i = 0; i < num_procs ; i++) {
+       int pipefdout[2];
+       int pipefdin[2];
+       if (pipe(pipefdout)==-1){
+         perror("Création tube");
+       }
+       if (pipe(pipefdin)==-1){
+         perror("Création tube");
+       }
 	/* creation du tube pour rediriger stdout */
 	/* creation du tube pour rediriger stderr */
 
 	pid = fork();
-  printf("%d\n",getpid() );
+  printf("%d\n",getpid());
 	if(pid == -1) ERROR_EXIT("fork");
 
 	if (pid == 0) { /* fils */
-
+      close(pipefdout[0]);
+      close(pipefdin[0]);
 	   /* redirection stdout */
+
+     dup2(STDOUT_FILENO,pipefdout[1]);
+     //close(STDOUT_FILENO);
 
 	   /* redirection stderr */
 
+     dup2(STDERR_FILENO,pipefdin[1]);
+     close(STDERR_FILENO);
+     printf("fhfjkhskjhgfksgfkug\n");
 	   /* Creation du tableau d'arguments pour le ssh */
 
 	   /* jump to new prog : */
 	   /* execvp("ssh",newargv); */
 
 	} else  if(pid > 0) { /* pere */
-
 	   /* fermeture des extremites des tubes non utiles */
+     close(pipefdout[1]);
+     close(pipefdin[1]);
+     char * buffer = malloc(sizeof(char)*512);
+     memset(buffer,0,sizeof(char)*512);
+     sleep(1);
+     read(pipefdout[0],buffer,512);
+     printf("pid: %d %s\n", pid,buffer);
 	   num_procs_creat++;
 	}
      }
