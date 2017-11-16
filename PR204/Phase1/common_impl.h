@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+
 
 
 /* autres includes (eventuellement) */
@@ -33,3 +35,9 @@ struct dsm_proc {
 typedef struct dsm_proc dsm_proc_t;
 
 int creer_socket(int prop, int *port_num);
+
+void get_addr_info(char* port, char* address, struct sockaddr_in * adr_server );
+
+int creer_socket_client(int prop);
+
+void do_connect(int sock,struct sockaddr_in sock_server);

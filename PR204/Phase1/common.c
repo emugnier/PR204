@@ -30,6 +30,23 @@ void do_bind(int sock, struct sockaddr_in server_adr){
   }
 }
 
+void get_addr_info(char* port, char* address, struct sockaddr_in * adr_server ) {
+
+  struct hostent* res;
+  struct in_addr* addr;
+  res=gethostbyname(address);
+  addr=(struct in_addr*)res->h_addr_list[0];
+  adr_server->sin_addr=*addr;
+  adr_server->sin_family= AF_INET;
+  adr_server->sin_port=htons(atoi(port));
+}
+
+void do_connect(int sock,struct sockaddr_in sock_server){
+  if(connect(sock,(struct sockaddr *) &sock_server, sizeof(sock_server))==-1){
+    perror("connect");
+    exit(EXIT_FAILURE);
+  }
+}
 
 int creer_socket(int prop, int *port_num)
 {  struct sockaddr_in server_adr;
@@ -44,10 +61,7 @@ int creer_socket(int prop, int *port_num)
    do_bind(fd, server_adr);
 	 struct sockaddr_in test;
 	 int lenport=sizeof(test);
-	 printf("before :%d\n",lenport);
 	 getsockname(fd,(struct sockaddr*)&test,&lenport);
-	 printf("after:%d\n",lenport);
-	 //printf("%s\n",inet_ntoa(test.sin_addr));
 	 *port_num=ntohs(test.sin_port);
 
    /* fonction de creation et d'attachement */
@@ -55,6 +69,12 @@ int creer_socket(int prop, int *port_num)
    /* renvoie le numero de descripteur */
    /* et modifie le parametre port_num */
    return fd;
+}
+
+int creer_socket_client(int prop)
+{
+	int fd=do_socket(AF_INET,SOCK_STREAM, 0);
+  return fd;
 }
 
 /* Vous pouvez ecrire ici toutes les fonctions */

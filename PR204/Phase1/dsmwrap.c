@@ -2,8 +2,14 @@
 
 int main(int argc, char **argv)
 {
+
+  int fdconnect;
+  struct sockaddr_in adr_fork;
   printf("%s\n",argv[1] );
   printf("%s\n",argv[2] );
+  printf("%s\n",argv[3] );
+
+
    /* processus intermediaire pour "nettoyer" */
    /* la liste des arguments qu'on va passer */
    /* a la commande a executer vraiment */
@@ -11,6 +17,9 @@ int main(int argc, char **argv)
    /* creation d'une socket pour se connecter au */
    /* au lanceur et envoyer/recevoir les infos */
    /* necessaires pour la phase dsm_init */
+   fdconnect=creer_socket_client(0);
+   get_addr_info(argv[2],argv[3],&adr_fork);
+   do_connect(fdconnect,adr_fork);
 
    /* Envoi du nom de machine au lanceur */
 
