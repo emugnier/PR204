@@ -31,13 +31,12 @@ int filehandler_nb(FILE * file,int * number){
   if(file==NULL){
     perror("fichier pas trouvé");
   }
-  else{ printf("fichier ok\n" );}
-  getline(&buffer,(size_t *)&n,file);
 
-  *number=atoi(buffer);
-  printf("%d\n",*number);
+  while(getline(&buffer,(size_t *)&n,file)!=-1){
+  *number=*number+1;
+  };
   free(buffer);
-
+  fseek(file,0,SEEK_SET);
   return 0;
 }
 
@@ -71,7 +70,6 @@ int filehandler_name(char ** tab,FILE * file){
   *tab = malloc(strlen(buffer)*sizeof(char));
   memset(*tab,0,strlen(buffer)*sizeof(char));
   strncpy(*tab,buffer,strlen(buffer)-1);
-  printf("dans la fonction%s\n",*tab );
   free(buffer);
   return 0;
 }
@@ -100,11 +98,9 @@ int main(int argc, char *argv[])
      }
      filehandler_nb(file,&num_procs);
 
-
      char * tab[num_procs];
      for (cpt=0;cpt<num_procs; cpt++){
        filehandler_name(&tab[cpt],file);
-       printf("%d\n",cpt);
      }
      fclose(file);
 
@@ -114,17 +110,16 @@ int main(int argc, char *argv[])
      /* la machine est un des elements d'identification */
 
      /* creation de la socket d'ecoute */
-
-  //int sock=creer_socket(prop, port_num);
-	//specify the socket to be a server socket and listen for at most 20 concurrent client
-	/*if(listen(sock , nbmachines)==-1){
+  int port_num;
+  int sock=creer_socket(0, &port_num);
+	if(listen(sock , num_procs)==-1){
 		perror("listen");
-	}*/
+	}
      /* + ecoute effective */
 
      /* creation des fils */
 
-     num_procs=1;
+     num_procs=2;
      for(i = 0; i < num_procs ; i++) {
        int pipefdout[2];
        int pipefdin[2];
@@ -138,24 +133,26 @@ int main(int argc, char *argv[])
 	/* creation du tube pour rediriger stderr */
 
 	pid = fork();
-  printf("%d\n",getpid());
+  printf("pid:%d\n",pid);
 	if(pid == -1) ERROR_EXIT("fork");
 
 	if (pid == 0) { /* fils */
       close(pipefdout[0]);
       close(pipefdin[0]);
 	   /* redirection stdout */
-
-     dup2(STDOUT_FILENO,pipefdout[1]);
+     close(STDOUT_FILENO);
+     dup2(pipefdout[1],STDOUT_FILENO);
+     close(pipefdout[1]);
      //close(STDOUT_FILENO);
 
 	   /* redirection stderr */
-
-     dup2(STDERR_FILENO,pipefdin[1]);
      close(STDERR_FILENO);
+     dup2(pipefdin[1],STDERR_FILENO);
+     close(pipefdin[1]);
      printf("fhfjkhskjhgfksgfkug\n");
 	   /* Creation du tableau d'arguments pour le ssh */
 
+     //char * argssh[5]={tab[0],"dsmwrap","helloword",}
 	   /* jump to new prog : */
 	   /* execvp("ssh",newargv); */
 
