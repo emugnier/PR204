@@ -1,6 +1,7 @@
 #include "common_impl.h"
 
 
+
 int do_socket(int domain, int type, int protocol) {
 	int sock;
 	int yes;
@@ -42,26 +43,30 @@ void get_addr_info(char* port, char* address, struct sockaddr_in * adr_server ) 
 }
 
 void do_connect(int sock,struct sockaddr_in sock_server){
-  if(connect(sock,(struct sockaddr *) &sock_server, sizeof(sock_server))==-1){
+	printf("connexion en cours\n" );
+	int con=connect(sock,(struct sockaddr *) &sock_server, sizeof(sock_server));
+	printf("con:%d\n",con);
+  if(con==-1){
     perror("connect");
+		printf("exit");
     exit(EXIT_FAILURE);
   }
+	printf("connect finish\n" );
 }
 
-int creer_socket(int prop, int *port_num)
-{  struct sockaddr_in server_adr;
-	 memset(&server_adr,0,sizeof(server_adr));
+int creer_socket(int prop, int *port_num,struct sockaddr_in *server_adr)
+{
    int fd=do_socket(AF_INET,SOCK_STREAM, 0);
 
-   init_serv_addr(&server_adr);
+   init_serv_addr(server_adr);
 
 
    //perform the binding
    //do_bind()
-   do_bind(fd, server_adr);
+   do_bind(fd,*server_adr);
 	 struct sockaddr_in test;
 	 int lenport=sizeof(test);
-	 getsockname(fd,(struct sockaddr*)&test,&lenport);
+	 getsockname(fd,(struct sockaddr*)&test,(socklen_t *)&lenport);
 	 *port_num=ntohs(test.sin_port);
 
    /* fonction de creation et d'attachement */
@@ -77,6 +82,24 @@ int creer_socket_client(int prop)
   return fd;
 }
 
+int is_complete(struct info_client info_client){
+  if (info_client.length_name >0 ){
+    if (info_client.length_name==strlen(info_client.name) && info_client.pid!=0){
+      return 1;
+    }
+  }
+    return 0;
+}
+
+int do_accept(int sock, struct sockaddr_in *adr_server){
+	int size=sizeof(*adr_server);
+	return (accept(sock, (struct sockaddr*)adr_server,(socklen_t *)&size));
+}
+void init_info_client(struct info_client* info_client){
+	info_client->length_name = 0;
+	info_client->pid =0;
+
+}
 /* Vous pouvez ecrire ici toutes les fonctions */
 /* qui pourraient etre utilisees par le lanceur */
 /* et le processus intermediaire. N'oubliez pas */

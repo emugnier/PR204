@@ -6,6 +6,7 @@
 /* des processus dsm */
 dsm_proc_t *proc_array = NULL;
 
+
 /* le nombre de processus effectivement crees */
 volatile int num_procs_creat = 0;
 
@@ -68,8 +69,12 @@ int main(int argc, char *argv[])
     memset(&action_sigchild,0,sizeof(action_sigchild));
     int port_num;
     char *hostname=malloc(sizeof(char)*512);
-
     FILE * file = fopen("test.txt","r");
+    struct sockaddr_in server_adr;
+    memset(&server_adr,0,sizeof(server_adr));
+    fd_set fdsock;
+    FD_ZERO(&fdsock);
+    int sock_tmp=-1;
     /* Mise en place d'un traitant pour recuperer les fils zombies*/
     action_sigchild.sa_handler = sigchld_handler;
     if( sigaction(SIGCHLD,&action_sigchild,NULL)==-1){
@@ -89,12 +94,11 @@ int main(int argc, char *argv[])
 
     /* creation de la socket d'ecoute */
     gethostname(hostname,512);
-    int sock=creer_socket(0, &port_num);
+    int sock=creer_socket(0, &port_num, &server_adr);
     /* + ecoute effective */
     if(listen(sock , num_procs)==-1){
       perror("listen");
     }
-
 
     /* creation des fils */
     for(i = 0; i < num_procs ; i++) {
@@ -115,6 +119,7 @@ int main(int argc, char *argv[])
       if(pid == -1) ERROR_EXIT("fork");
 
       if (pid == 0) { /* fils */
+
         close(pipefdout[0]);
         close(pipefdin[0]);
         /* redirection stdout */
@@ -135,7 +140,7 @@ int main(int argc, char *argv[])
         char* pt = malloc(sizeof(char)*128);
         sprintf(pt,"%d",i);
         char * newargv[7]={"ssh",tab[i],"dsmwrap",pt,hostname,port_char,NULL};
-
+        printf("shsfhfhfghbjcgbcgbhjchjnchjn\n");
         /* jump to new prog : */
         if(execvp("ssh",newargv)==-1){
           perror("execvp");
@@ -144,24 +149,45 @@ int main(int argc, char *argv[])
       } else  if(pid > 0) { /* pere */
         /* fermeture des extremites des tubes non utiles */
         close(pipefdout[1]);
+        printf("toto\n");
+        dup2(pipefdout[0],STDOUT_FILENO);
+        printf("toto\n");
+        close(pipefdout[0]);
+        printf("toto\n");
         close(pipefdin[1]);
+        dup2(pipefdin[0],STDERR_FILENO);
+        close(pipefdin[0]);
         char * buffer = malloc(sizeof(char)*512);
         memset(buffer,0,sizeof(char)*512);
         sleep(1);
-        read(pipefdout[0],buffer,512);
-        printf("pid: %d %s\n", pid,buffer);
+        //read(pipefdout[0],buffer,512);
+        //printf("pid: %d %s\n", pid,buffer);
         num_procs_creat++;
       }
     }
-
-
+    struct info_client info_client[num_procs];
+    FD_SET(sock,&fdsock);
     for(i = 0; i < num_procs ; i++){
-      
+      init_info_client(&(info_client[i]));
       /* on accepte les connexions des processus dsm */
+      printf("accept\n" );
+      sock_tmp=do_accept(sock,&server_adr);
+      printf("accept %i\n",i );
+      if (sock_tmp ==-1){
+        perror("accept");
+      }
+      FD_SET(sock_tmp,&fdsock);
 
       /*  On recupere le nom de la machine distante */
       /* 1- d'abord la taille de la chaine */
+      read(sock_tmp,&(info_client[i].length_name),sizeof(int));
       /* 2- puis la chaine elle-meme */
+      info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
+      int receive=0;
+      do {
+        receive+=read(sock_tmp,&(info_client[i].name)+receive,info_client[i].length_name-receive);
+      } while(receive!=info_client[i].length_name);
+      printf("name:%s\n",info_client[i].name );
 
       /* On recupere le pid du processus distant  */
 
