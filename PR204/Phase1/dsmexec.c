@@ -17,22 +17,19 @@ void usage(void)
   exit(EXIT_FAILURE);
 }
 
-void sigchld_handler(int sig)
+void sigchld_handler(int sig)//On traite les fils qui se terminent pour éviter les zombies
 {
   write(STDOUT_FILENO, "child terminated", 16);
   wait(NULL);
-  /* on traite les fils qui se terminent */
-  /* pour eviter les zombies */
 }
 
-int filehandler_nb(FILE * file,int * number){
+int filehandler_nb(FILE * file,int * number){ //On récupère le nombre de processus à créer
   char* buffer =  malloc(sizeof(char)*512);
   int n;
   memset(buffer,0,sizeof(char)*512);
   if(file==NULL){
     perror("fichier pas trouvé");
   }
-
   while(getline(&buffer,(size_t *)&n,file)!=-1){
     *number=*number+1;
   };
@@ -41,7 +38,7 @@ int filehandler_nb(FILE * file,int * number){
   return 0;
 }
 
-int filehandler_name(char ** tab,FILE * file){
+int filehandler_name(char ** tab,FILE * file){ //On récupère le nom de toutes les machines surlesquelles on veut exécuter les programmes
   char* buffer =  malloc(sizeof(char)*512);
   size_t n;
   memset(buffer,0,sizeof(char)*512);
@@ -60,40 +57,45 @@ int main(int argc, char *argv[])
 {
   if (argc < 3){
     usage();
-  } else {
-    pid_t pid;
-    int num_procs = 0;
-    int i;
-    int cpt;
-    struct sigaction action_sigchild;
+  }
+  else { // On a les informations nécessaire au lancement du programme
+
+    //Déclaration et initialisation des variables
+    pid_t pid; //Variable qui va servir à différencier le père des fils
+    int num_procs = 0; //Variable qui permet de savoir le nombre de processus à créer
+    int i; //Varible pour les boucles
+    struct sigaction action_sigchild; //Permet de gérer les signaux de mort des fils
     memset(&action_sigchild,0,sizeof(action_sigchild));
-    int port_num;
+    action_sigchild.sa_handler = sigchld_handler;
+    int port_num; //initialisation du numéro de port qui sera alloué dynamiquement
     char *hostname=malloc(sizeof(char)*512);
-    FILE * file = fopen("test.txt","r");
+    gethostname(hostname,512); //Récupération du nom de la machine qui exécute le programme
+    FILE * file = fopen("test.txt","r"); //Pointeur sur le fichier dont on extrait les informations sur les machines sur lesquelles on veut exécuter les programmes
     struct sockaddr_in server_adr;
     memset(&server_adr,0,sizeof(server_adr));
     fd_set fdsock;
     FD_ZERO(&fdsock);
     int sock_tmp=-1;
+
+
+    //Début de l'exécution
     /* Mise en place d'un traitant pour recuperer les fils zombies*/
-    action_sigchild.sa_handler = sigchld_handler;
     if( sigaction(SIGCHLD,&action_sigchild,NULL)==-1){
       perror("traitant signal");
     }
 
-    /* lecture du fichier de machines */
+        /* lecture du fichier de machines */
     /* 1- on recupere le nombre de processus a lancer */
     filehandler_nb(file,&num_procs);
     char * tab[num_procs];
     /* 2- on recupere les noms des machines : le nom de */
     /* la machine est un des elements d'identification */
-    for (cpt=0;cpt<num_procs; cpt++){
-      filehandler_name(&tab[cpt],file);
+    for (i=0;i<num_procs; i++){
+      filehandler_name(&tab[i],file);
     }
     fclose(file);
 
     /* creation de la socket d'ecoute */
-    gethostname(hostname,512);
     int sock=creer_socket(0, &port_num, &server_adr);
     /* + ecoute effective */
     if(listen(sock , num_procs)==-1){
@@ -102,7 +104,6 @@ int main(int argc, char *argv[])
 
     /* creation des fils */
     for(i = 0; i < num_procs ; i++) {
-
       /* creation du tube pour rediriger stdout */
       int pipefdout[2];
       int pipefdin[2];
@@ -149,19 +150,23 @@ int main(int argc, char *argv[])
       } else  if(pid > 0) { /* pere */
         /* fermeture des extremites des tubes non utiles */
         close(pipefdout[1]);
-        printf("toto\n");
+        /*printf("toto\n");
         dup2(pipefdout[0],STDOUT_FILENO);
         printf("toto\n");
         close(pipefdout[0]);
-        printf("toto\n");
+        printf("toto\n");*/
         close(pipefdin[1]);
-        dup2(pipefdin[0],STDERR_FILENO);
-        close(pipefdin[0]);
+        //dup2(pipefdin[0],STDERR_FILENO);
+        //close(pipefdin[0]);
         char * buffer = malloc(sizeof(char)*512);
         memset(buffer,0,sizeof(char)*512);
+        char * buffer2 = malloc(sizeof(char)*512);
+        memset(buffer2,0,sizeof(char)*512);
         sleep(1);
-        //read(pipefdout[0],buffer,512);
-        //printf("pid: %d %s\n", pid,buffer);
+        read(pipefdout[0],buffer,512);
+        printf("%s\n",buffer);
+        read(pipefdin[0],buffer2,512);
+        printf("%s\n",buffer2);
         num_procs_creat++;
       }
     }
@@ -172,7 +177,6 @@ int main(int argc, char *argv[])
       /* on accepte les connexions des processus dsm */
       printf("accept\n" );
       sock_tmp=do_accept(sock,&server_adr);
-      printf("accept %i\n",i );
       if (sock_tmp ==-1){
         perror("accept");
       }
@@ -181,18 +185,36 @@ int main(int argc, char *argv[])
       /*  On recupere le nom de la machine distante */
       /* 1- d'abord la taille de la chaine */
       read(sock_tmp,&(info_client[i].length_name),sizeof(int));
+      printf("taille nom: %d\n",info_client[i].length_name );
       /* 2- puis la chaine elle-meme */
+      //info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
       info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
+      //memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
       int receive=0;
-      do {
-        receive+=read(sock_tmp,&(info_client[i].name)+receive,info_client[i].length_name-receive);
-      } while(receive!=info_client[i].length_name);
+      char *test=malloc(info_client[i].length_name*sizeof(char));
+      do{
+      receive+=read(sock_tmp,test+receive,info_client[i].length_name-receive);
+    }while(receive!=info_client[i].length_name);
+      printf("test:%s\n",test);
+      strcpy(info_client[i].name,test);
+      /*do {
+        printf("INSHALLAH %d\n",info_client[i].length_name-receive );  printf("Avant l'envoi:%d\n",strlen(info_client[i].name) );
+        receive+=read(sock_tmp,info_client[i].name+receive,info_client[i].length_name*sizeof(char));
+        printf("receive:%d\n",receive );
+        printf("name:%s\n",info_client[i].name );
+        printf("Longeur chaine: %d",strlen(info_client[i].name));
+      } while(receive!=info_client[i].length_name);*/
+      printf("toto\n" );
       printf("name:%s\n",info_client[i].name );
 
       /* On recupere le pid du processus distant  */
 
+      read(sock_tmp,&(info_client[i].pid),sizeof(int));
+      printf("PID: %d\n", info_client[i].pid);
       /* On recupere le numero de port de la socket */
       /* d'ecoute des processus distants */
+      read(sock_tmp,&(info_client[i].port),sizeof(int));
+      printf("NUMERO DE PORT %d\n", info_client[i].port);
     }
 
     /* envoi du nombre de processus aux processus dsm*/

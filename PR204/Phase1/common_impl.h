@@ -38,6 +38,7 @@ struct info_client{
   int length_name;
   char * name;
   int pid;
+  int port;
 };
 typedef struct dsm_proc dsm_proc_t;
 

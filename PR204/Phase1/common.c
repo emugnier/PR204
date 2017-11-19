@@ -98,6 +98,7 @@ int do_accept(int sock, struct sockaddr_in *adr_server){
 void init_info_client(struct info_client* info_client){
 	info_client->length_name = 0;
 	info_client->pid =0;
+	info_client->port=0;
 
 }
 /* Vous pouvez ecrire ici toutes les fonctions */
