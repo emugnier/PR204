@@ -39,6 +39,7 @@ struct info_client{
   char * name;
   int pid;
   int port;
+  int rang;
 };
 typedef struct dsm_proc dsm_proc_t;
 
@@ -55,3 +56,5 @@ int is_complete(struct info_client);
 int do_accept(int sock, struct sockaddr_in *adr_server);
 
 void init_info_client(struct info_client* info_client);
+
+void get_info_std_i(int fd,int i);

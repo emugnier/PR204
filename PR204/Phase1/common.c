@@ -99,8 +99,21 @@ void init_info_client(struct info_client* info_client){
 	info_client->length_name = 0;
 	info_client->pid =0;
 	info_client->port=0;
+	info_client->rank=0;
 
 }
+
+
+void get_info_std_i(int fd,int i){
+	char * buffer = malloc(sizeof(char)*128);
+	while(read(fd,buffer,128)!=0){
+	printf("Info du fils de rang i %d:  %s\n",i,buffer);
+}
+}
+
+
+
+
 /* Vous pouvez ecrire ici toutes les fonctions */
 /* qui pourraient etre utilisees par le lanceur */
 /* et le processus intermediaire. N'oubliez pas */

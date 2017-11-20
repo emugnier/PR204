@@ -19,7 +19,7 @@ void usage(void)
 
 void sigchld_handler(int sig)//On traite les fils qui se terminent pour éviter les zombies
 {
-  write(STDOUT_FILENO, "child terminated", 16);
+  write(STDOUT_FILENO, "child terminated\n", 17);
   wait(NULL);
 }
 
@@ -103,35 +103,40 @@ int main(int argc, char *argv[])
     }
 
     /* creation des fils */
+    int pipefdout[2*num_procs];
+    int pipefdin[2*num_procs];
     for(i = 0; i < num_procs ; i++) {
       /* creation du tube pour rediriger stdout */
-      int pipefdout[2];
-      int pipefdin[2];
-      if (pipe(pipefdout)==-1){
+      int pipefdout_tmp[2];
+      int pipefdin_tmp[2];
+      if (pipe(pipefdout_tmp)==-1){
         perror("Création tube");
       }
       /* creation du tube pour rediriger stderr */
-      if (pipe(pipefdin)==-1){
+      if (pipe(pipefdin_tmp)==-1){
         perror("Création tube");
       }
-
+      pipefdout[i*2]=pipefdout_tmp[0];
+      pipefdout[i*2+1]=pipefdout_tmp[1];
+      pipefdin[i*2]=pipefdin_tmp[0];
+      pipefdin[i*2+1]=pipefdin_tmp[1];
 
       pid = fork();
       if(pid == -1) ERROR_EXIT("fork");
 
       if (pid == 0) { /* fils */
 
-        close(pipefdout[0]);
-        close(pipefdin[0]);
+        close(pipefdout_tmp[0]);
+        close(pipefdin_tmp[0]);
         /* redirection stdout */
         close(STDOUT_FILENO);
-        dup2(pipefdout[1],STDOUT_FILENO);
-        close(pipefdout[1]);
+        dup2(pipefdout_tmp[1],STDOUT_FILENO);
+        close(pipefdout_tmp[1]);
 
         /* redirection stderr */
         close(STDERR_FILENO);
-        dup2(pipefdin[1],STDERR_FILENO);
-        close(pipefdin[1]);
+        dup2(pipefdin_tmp[1],STDERR_FILENO);
+        close(pipefdin_tmp[1]);
 
 
         /* Creation du tableau d'arguments pour le ssh */
@@ -149,27 +154,30 @@ int main(int argc, char *argv[])
 
       } else  if(pid > 0) { /* pere */
         /* fermeture des extremites des tubes non utiles */
-        close(pipefdout[1]);
+        close(pipefdout_tmp[1]);
         /*printf("toto\n");
         dup2(pipefdout[0],STDOUT_FILENO);
         printf("toto\n");
         close(pipefdout[0]);
         printf("toto\n");*/
-        close(pipefdin[1]);
+        close(pipefdin_tmp[1]);
         //dup2(pipefdin[0],STDERR_FILENO);
         //close(pipefdin[0]);
         char * buffer = malloc(sizeof(char)*512);
         memset(buffer,0,sizeof(char)*512);
         char * buffer2 = malloc(sizeof(char)*512);
         memset(buffer2,0,sizeof(char)*512);
-        sleep(1);
-        read(pipefdout[0],buffer,512);
+        /*read(pipefdout_tmp[0],buffer,512);
         printf("%s\n",buffer);
-        read(pipefdin[0],buffer2,512);
+        read(pipefdin_tmp[0],buffer2,512);
         printf("%s\n",buffer2);
-        num_procs_creat++;
+        num_procs_creat++;*/
       }
     }
+    /*for (i=0;i<num_procs;i++){
+      get_info_std_i(pipefdin[i*2],i);
+      get_info_std_i(pipefdout[i*2],i);
+    }*/
     struct info_client info_client[num_procs];
     FD_SET(sock,&fdsock);
     for(i = 0; i < num_procs ; i++){
@@ -215,14 +223,31 @@ int main(int argc, char *argv[])
       /* d'ecoute des processus distants */
       read(sock_tmp,&(info_client[i].port),sizeof(int));
       printf("NUMERO DE PORT %d\n", info_client[i].port);
-    }
+
 
     /* envoi du nombre de processus aux processus dsm*/
-
+    if(write(sock_tmp,&num_procs,sizeof(int))==-1){
+      perror("write");
+    };
+    for (i=0;i<num_procs;i++){
+      info_client[i].rang=i;
     /* envoi des rangs aux processus dsm */
+    write(sock_tmp,&(info_client[i].rang),sizeof(int));
+
+    write(sock_tmp,&(info_client[i].length_name),sizeof(int));
+    int sent=0;
+    do {
+      sent+=write(sock_tmp,hostname+sent,info_client[i].length_name-sent);
+    } while(sent!=info_client[i].length_name);
+
 
     /* envoi des infos de connexion aux processus */
-
+  }
+  }
+  for (i=0;i<num_procs;i++){
+    get_info_std_i(pipefdin[i*2],i);
+    get_info_std_i(pipefdout[i*2],i);
+  }
     /* gestion des E/S : on recupere les caracteres */
     /* sur les tubes de redirection de stdout/stderr */
     /* while(1)

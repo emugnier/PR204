@@ -2,13 +2,11 @@
 
 int main(int argc, char **argv)
 {
-
+  int i;
   int fdconnect;
   struct sockaddr_in adr_fork;
   int pid=getpid();
-  printf("dsmwrap:%s\n",argv[1] );
-  printf("dsmwrap:%s\n",argv[2] );
-  printf("dsmwrap:%s\n",argv[3] );
+  printf("dsmwrap:%s %s %s\n",argv[1],argv[2], argv[3] );
   char *hostname=malloc(sizeof(char)*512);
   gethostname(hostname,512);
   printf("%s\n",hostname );
@@ -30,7 +28,8 @@ int main(int argc, char **argv)
    do {
      sent+=write(fdconnect,hostname+sent,length_host-sent);
    } while(sent!=length_host);
-   printf("fin de l'envoi\n" );
+   printf("fin de l'envoi\n");
+   perror("toto essai c'est celui  là");
    /* Envoi du pid au lanceur */
    write(fdconnect,&pid,sizeof(int));
    /* Creation de la socket d'ecoute pour les */
@@ -40,17 +39,52 @@ int main(int argc, char **argv)
    int port_num;
    struct sockaddr_in server_adr;
    memset(&server_adr,0,sizeof(server_adr));
-   int sock=creer_socket(0, &port_num, &server_adr);
-   write(fdconnect,&port_num,sizeof(int));
-   /*int num_procs;
-   read()
-   if(listen(sock , atoi(argv[0]))==-1){
-     perror("listen");
-   }*/
-   /* Envoi du numero de port au lanceur */
 
+   /* Envoi du numero de port au lanceur */
    /* pour qu'il le propage à tous les autres */
    /* processus dsm */
+   int sock=creer_socket(0, &port_num, &server_adr);
+   write(fdconnect,&port_num,sizeof(int));
+
+   int num_procs;
+   if(read(fdconnect,&num_procs,sizeof(int))==-1){
+     perror("read");
+   };
+
+   struct info_client info_client[num_procs];
+
+   if(listen(sock , num_procs)==-1){
+     perror("listen");
+   }
+   for(i = 0; i < num_procs ; i++){
+     init_info_client(&(info_client[i]));
+
+     read(fdconnect,&(info_client[i].rang),sizeof(int));
+
+     read(fdconnect,&(info_client[i].length_name),sizeof(int));
+     printf("taille nom: %d\n",info_client[i].length_name );
+     /* 2- puis la chaine elle-meme */
+     //info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
+     info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
+     //memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
+     int receive=0;
+     char *test=malloc(info_client[i].length_name*sizeof(char));
+     do{
+     receive+=read(fdconnect,test+receive,info_client[i].length_name-receive);
+   }while(receive!=info_client[i].length_name);
+     printf("test:%s\n",test);
+     strcpy(info_client[i].name,test);
+     /* on accepte les connexions des processus dsm */
+     /*printf("accept\n" );
+     sock_tmp=do_accept(sock,&server_adr);
+     if (sock_tmp ==-1){
+       perror("accept");
+     }
+*/
+   }
+
+
+
 
    /* on execute la bonne commande */
    return 0;
