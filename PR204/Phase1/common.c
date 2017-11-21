@@ -45,7 +45,6 @@ void get_addr_info(char* port, char* address, struct sockaddr_in * adr_server ) 
 void do_connect(int sock,struct sockaddr_in sock_server){
 	printf("connexion en cours\n" );
 	int con=connect(sock,(struct sockaddr *) &sock_server, sizeof(sock_server));
-	printf("con:%d\n",con);
   if(con==-1){
     perror("connect");
 		printf("exit");
@@ -99,14 +98,14 @@ void init_info_client(struct info_client* info_client){
 	info_client->length_name = 0;
 	info_client->pid =0;
 	info_client->port=0;
-	info_client->rank=0;
+	info_client->rang=0;
 
 }
 
 
 void get_info_std_i(int fd,int i){
-	char * buffer = malloc(sizeof(char)*128);
-	while(read(fd,buffer,128)!=0){
+	char * buffer = malloc(sizeof(char)*512); //penser à mettre un taille Variable
+	while(read(fd,buffer,512)!=0){
 	printf("Info du fils de rang i %d:  %s\n",i,buffer);
 }
 }

@@ -138,14 +138,14 @@ int main(int argc, char *argv[])
         dup2(pipefdin_tmp[1],STDERR_FILENO);
         close(pipefdin_tmp[1]);
 
-
+        char *commande="~/Documents/2a/reseausyst/PR204/Phase1/bin/truc";
         /* Creation du tableau d'arguments pour le ssh */
         printf("tab0:%s\n",tab[i] );
         char* port_char = malloc(sizeof(char)*128);
         sprintf(port_char,"%d",port_num);
         char* pt = malloc(sizeof(char)*128);
         sprintf(pt,"%d",i);
-        char * newargv[7]={"ssh",tab[i],"dsmwrap",pt,hostname,port_char,NULL};
+        char * newargv[]={"ssh",tab[i],"dsmwrap",pt,hostname,port_char,commande,NULL};
         printf("shsfhfhfghbjcgbcgbhjchjnchjn\n");
         /* jump to new prog : */
         if(execvp("ssh",newargv)==-1){
@@ -179,8 +179,11 @@ int main(int argc, char *argv[])
       get_info_std_i(pipefdout[i*2],i);
     }*/
     struct info_client info_client[num_procs];
-    FD_SET(sock,&fdsock);
+    //FD_SET(sock,&fdsock);
+    //sleep(1);
+    int socket_table[num_procs];
     for(i = 0; i < num_procs ; i++){
+      printf("i eme client:%d\n", i);
       init_info_client(&(info_client[i]));
       /* on accepte les connexions des processus dsm */
       printf("accept\n" );
@@ -223,27 +226,42 @@ int main(int argc, char *argv[])
       /* d'ecoute des processus distants */
       read(sock_tmp,&(info_client[i].port),sizeof(int));
       printf("NUMERO DE PORT %d\n", info_client[i].port);
-
-
+      socket_table[i]=sock_tmp;
+}
     /* envoi du nombre de processus aux processus dsm*/
-    if(write(sock_tmp,&num_procs,sizeof(int))==-1){
-      perror("write");
-    };
-    for (i=0;i<num_procs;i++){
-      info_client[i].rang=i;
-    /* envoi des rangs aux processus dsm */
-    write(sock_tmp,&(info_client[i].rang),sizeof(int));
 
-    write(sock_tmp,&(info_client[i].length_name),sizeof(int));
+    for ( i = 0; i < num_procs; i++) {
+
+
+    if(write(socket_table[i],&num_procs,sizeof(int))==-1){
+      perror("write");
+    }
+
+
+    int j;
+
+    for (j=0;j<num_procs;j++){
+      info_client[j].rang=j;
+      /*envoi des rangs aux processus dsm */
+    if(write(socket_table[i],&(info_client[j].rang),sizeof(int))==-1){
+      perror("write");
+    }
+/* envoi des infos de connexion aux processus */
+    printf("envoi taille:%d\n",info_client[j].length_name );
+    write(socket_table[i],&(info_client[j].length_name),sizeof(int));
+
     int sent=0;
     do {
-      sent+=write(sock_tmp,hostname+sent,info_client[i].length_name-sent);
-    } while(sent!=info_client[i].length_name);
+      printf("nom:%s\n",info_client[j].name );
+      sent+=write(socket_table[i],info_client[j].name+sent,info_client[j].length_name-sent);
+    } while(sent!=info_client[j].length_name);
+
+    write(socket_table[i],&(info_client[j].port),sizeof(int));
+    write(socket_table[i],&(info_client[j].pid),sizeof(int));
 
 
-    /* envoi des infos de connexion aux processus */
   }
-  }
+}
   for (i=0;i<num_procs;i++){
     get_info_std_i(pipefdin[i*2],i);
     get_info_std_i(pipefdout[i*2],i);
@@ -260,10 +278,14 @@ int main(int argc, char *argv[])
   */
 
   /* on attend les processus fils */
+  //???
 
   /* on ferme les descripteurs proprement */
+  //fermer tube ? quand on execvp le pere reste t il le père
+  //question path pour executer commande
 
   /* on ferme la socket d'ecoute */
+  close(sock);
 }
 exit(EXIT_SUCCESS);
 }

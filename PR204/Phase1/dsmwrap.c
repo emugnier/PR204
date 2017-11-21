@@ -11,6 +11,7 @@ int main(int argc, char **argv)
   gethostname(hostname,512);
   printf("%s\n",hostname );
   int length_host=strlen(hostname);
+  printf("length_host: %d\n",length_host );
    /* processus intermediaire pour "nettoyer" */
    /* la liste des arguments qu'on va passer */
    /* a la commande a executer vraiment */
@@ -29,7 +30,6 @@ int main(int argc, char **argv)
      sent+=write(fdconnect,hostname+sent,length_host-sent);
    } while(sent!=length_host);
    printf("fin de l'envoi\n");
-   perror("toto essai c'est celui  là");
    /* Envoi du pid au lanceur */
    write(fdconnect,&pid,sizeof(int));
    /* Creation de la socket d'ecoute pour les */
@@ -56,17 +56,21 @@ int main(int argc, char **argv)
    if(listen(sock , num_procs)==-1){
      perror("listen");
    }
-   for(i = 0; i < num_procs ; i++){
+  for(i = 0; i < num_procs ; i++){
      init_info_client(&(info_client[i]));
-
-     read(fdconnect,&(info_client[i].rang),sizeof(int));
-
+     if(read(fdconnect,&(info_client[i].rang),sizeof(int))==-1){
+       perror("read");
+     }
+     printf("%d\n",info_client[i].rang );
      read(fdconnect,&(info_client[i].length_name),sizeof(int));
      printf("taille nom: %d\n",info_client[i].length_name );
+
+
+
      /* 2- puis la chaine elle-meme */
-     //info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
      info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
-     //memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
+     //info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
+     memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
      int receive=0;
      char *test=malloc(info_client[i].length_name*sizeof(char));
      do{
@@ -74,6 +78,13 @@ int main(int argc, char **argv)
    }while(receive!=info_client[i].length_name);
      printf("test:%s\n",test);
      strcpy(info_client[i].name,test);
+
+   read(fdconnect,&(info_client[i].port),sizeof(int));
+   printf("port:%d\n", info_client[i].port);
+
+   read(fdconnect,&(info_client[i].pid),sizeof(int));
+   printf("pid:%d\n", info_client[i].pid);
+ }
      /* on accepte les connexions des processus dsm */
      /*printf("accept\n" );
      sock_tmp=do_accept(sock,&server_adr);
@@ -81,11 +92,18 @@ int main(int argc, char **argv)
        perror("accept");
      }
 */
-   }
+   //}
 
 
 
 
    /* on execute la bonne commande */
+   printf("programme:%s\n",argv[4] );
+   printf("test\n" );
+   char * newargv[]={argv[4],NULL};
+
+   if(execvp(argv[4],newargv)==-1){
+     perror("execvp");
+   };
    return 0;
 }
