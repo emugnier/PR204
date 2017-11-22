@@ -69,7 +69,6 @@ int main(int argc, char **argv)
 
      /* 2- puis la chaine elle-meme */
      info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
-     //info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
      memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
      int receive=0;
      char *test=malloc(info_client[i].length_name*sizeof(char));

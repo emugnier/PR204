@@ -155,29 +155,16 @@ int main(int argc, char *argv[])
       } else  if(pid > 0) { /* pere */
         /* fermeture des extremites des tubes non utiles */
         close(pipefdout_tmp[1]);
-        /*printf("toto\n");
-        dup2(pipefdout[0],STDOUT_FILENO);
-        printf("toto\n");
-        close(pipefdout[0]);
-        printf("toto\n");*/
         close(pipefdin_tmp[1]);
-        //dup2(pipefdin[0],STDERR_FILENO);
-        //close(pipefdin[0]);
         char * buffer = malloc(sizeof(char)*512);
         memset(buffer,0,sizeof(char)*512);
         char * buffer2 = malloc(sizeof(char)*512);
         memset(buffer2,0,sizeof(char)*512);
-        /*read(pipefdout_tmp[0],buffer,512);
-        printf("%s\n",buffer);
-        read(pipefdin_tmp[0],buffer2,512);
-        printf("%s\n",buffer2);
-        num_procs_creat++;*/
+
+        num_procs_creat++;
       }
     }
-    /*for (i=0;i<num_procs;i++){
-      get_info_std_i(pipefdin[i*2],i);
-      get_info_std_i(pipefdout[i*2],i);
-    }*/
+
     struct info_client info_client[num_procs];
     //FD_SET(sock,&fdsock);
     //sleep(1);
@@ -198,9 +185,8 @@ int main(int argc, char *argv[])
       read(sock_tmp,&(info_client[i].length_name),sizeof(int));
       printf("taille nom: %d\n",info_client[i].length_name );
       /* 2- puis la chaine elle-meme */
-      //info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
       info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
-      //memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
+      memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
       int receive=0;
       char *test=malloc(info_client[i].length_name*sizeof(char));
       do{
@@ -208,6 +194,7 @@ int main(int argc, char *argv[])
     }while(receive!=info_client[i].length_name);
       printf("test:%s\n",test);
       strcpy(info_client[i].name,test);
+      //Code sans variable intermédiaire
       /*do {
         printf("INSHALLAH %d\n",info_client[i].length_name-receive );  printf("Avant l'envoi:%d\n",strlen(info_client[i].name) );
         receive+=read(sock_tmp,info_client[i].name+receive,info_client[i].length_name*sizeof(char));
@@ -219,7 +206,6 @@ int main(int argc, char *argv[])
       printf("name:%s\n",info_client[i].name );
 
       /* On recupere le pid du processus distant  */
-
       read(sock_tmp,&(info_client[i].pid),sizeof(int));
       printf("PID: %d\n", info_client[i].pid);
       /* On recupere le numero de port de la socket */
