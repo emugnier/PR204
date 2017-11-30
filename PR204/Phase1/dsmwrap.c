@@ -95,13 +95,37 @@ int main(int argc, char **argv)
 
 
 
-
+   //close(fdconnect);
    /* on execute la bonne commande */
    printf("programme:%s\n",argv[4] );
    printf("test\n" );
-   char * newargv[]={argv[4],NULL};
+   int taille_tab=argc-4;
+   char *newargv1[taille_tab];
 
-   if(execvp(argv[4],newargv)==-1){
+   for(i=4;i<argc;i++){
+     newargv1[i-4]=argv[i];
+     printf("argv:%s\n",newargv1[i-4] );
+   }
+   newargv1[i-4]=NULL;
+   /*
+   newargv1[0]=argv[4];
+
+
+   newargv1[1]=argv[5];
+   newargv1[2]=argv[6];
+   newargv1[3]=argv[7];*/
+
+   /*
+   int cpt;
+   for (cpt = 0;cpt<argc-3;cpt++){
+     newargv1[7+cpt]=argv[cpt+3];
+     printf("compteur:%d\n",7+cpt );
+   }
+   newargv1[7+argc-3]=NULL;
+   char * newargv[]={argv[4],NULL};//argv[4]
+   */
+
+   if(execvp(argv[4],newargv1)==-1){
      perror("execvp");
    };
    return 0;

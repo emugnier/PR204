@@ -9,6 +9,7 @@ dsm_proc_t *proc_array = NULL;
 
 /* le nombre de processus effectivement crees */
 volatile int num_procs_creat = 0;
+volatile int num_procs=0;
 
 void usage(void)
 {
@@ -19,6 +20,7 @@ void usage(void)
 
 void sigchld_handler(int sig)//On traite les fils qui se terminent pour éviter les zombies
 {
+  //write(STDOUT_FILENO, &num_procs, sizeof(int));
   write(STDOUT_FILENO, "child terminated\n", 17);
   wait(NULL);
 }
@@ -50,7 +52,15 @@ int filehandler_name(char ** tab,FILE * file){ //On récupère le nom de toutes 
   return 0;
 }
 
-
+int belongs_to(int *pipe,int fd, int size){
+  int i;
+  for (i=0;i<size;i++){
+    if (pipe[i]==fd){
+      return 1;
+    }
+  }
+  return 0;
+}
 
 
 int main(int argc, char *argv[])
@@ -62,15 +72,16 @@ int main(int argc, char *argv[])
 
     //Déclaration et initialisation des variables
     pid_t pid; //Variable qui va servir à différencier le père des fils
-    int num_procs = 0; //Variable qui permet de savoir le nombre de processus à créer
+    //int num_procs = 0; //Variable qui permet de savoir le nombre de processus à créer
     int i; //Varible pour les boucles
     struct sigaction action_sigchild; //Permet de gérer les signaux de mort des fils
     memset(&action_sigchild,0,sizeof(action_sigchild));
     action_sigchild.sa_handler = sigchld_handler;
+    action_sigchild.sa_flags=SA_RESTART;
     int port_num; //initialisation du numéro de port qui sera alloué dynamiquement
     char *hostname=malloc(sizeof(char)*512);
     gethostname(hostname,512); //Récupération du nom de la machine qui exécute le programme
-    FILE * file = fopen("test.txt","r"); //Pointeur sur le fichier dont on extrait les informations sur les machines sur lesquelles on veut exécuter les programmes
+    FILE * file = fopen(argv[1],"r"); //Pointeur sur le fichier dont on extrait les informations sur les machines sur lesquelles on veut exécuter les programmes
     struct sockaddr_in server_adr;
     memset(&server_adr,0,sizeof(server_adr));
     fd_set fdsock;
@@ -101,7 +112,7 @@ int main(int argc, char *argv[])
     if(listen(sock , num_procs)==-1){
       perror("listen");
     }
-
+    printf("argc:%d\n",argc );
     /* creation des fils */
     int pipefdout[2*num_procs];
     int pipefdin[2*num_procs];
@@ -138,17 +149,47 @@ int main(int argc, char *argv[])
         dup2(pipefdin_tmp[1],STDERR_FILENO);
         close(pipefdin_tmp[1]);
 
-        char *commande="~/Documents/2a/reseausyst/PR204/Phase1/bin/truc";
+        char *commande=argv[2];
+        //char *commande="~/Documents/2a/reseausyst/PR204/Phase1/bin/truc";
         /* Creation du tableau d'arguments pour le ssh */
         printf("tab0:%s\n",tab[i] );
         char* port_char = malloc(sizeof(char)*128);
         sprintf(port_char,"%d",port_num);
         char* pt = malloc(sizeof(char)*128);
         sprintf(pt,"%d",i);
-        char * newargv[]={"ssh",tab[i],"dsmwrap",pt,hostname,port_char,commande,NULL};
-        printf("shsfhfhfghbjcgbcgbhjchjnchjn\n");
+        int taille_tab=8+argc-3;
+        char *newargv1[taille_tab];
+        newargv1[0]=malloc(strlen("ssh"));
+        strcpy(newargv1[0],"ssh");
+        newargv1[1]=malloc(strlen(tab[i]));
+        strcpy(newargv1[1],tab[i]);
+        newargv1[0]="ssh";
+        newargv1[1]=tab[i];
+        newargv1[2]="/net/t/emugnier001/Documents/2a/reseausyst/PR204/Phase1/bin/dsmwrap";
+        newargv1[3]=pt;
+        newargv1[4]=hostname;
+        newargv1[5]=port_char;
+        newargv1[6]=commande;
+        int cpt;
+        for (cpt = 0;cpt<argc-3;cpt++){
+          newargv1[7+cpt]=argv[cpt+3];
+          printf("compteur:%d\n",7+cpt );
+        }
+        newargv1[7+argc-3]=NULL;
+        /*strcpy(newargv[0],"ssh");
+        strcpy(newargv[0],"ssh");
+        strcpy(newargv[0],"ssh");
+        strcpy(newargv[0],"ssh");
+        strcpy(newargv[0],"ssh");
+
+
+        for (cpt = 0;cpt<taille_tab;cpt++){
+          printf("%s\n",newargv1[cpt] );
+        }*/
+        char * newargv[]={"ssh",tab[i],newargv1[2],pt,hostname,port_char,commande,NULL};//doit prendre comme argument supplémentaire arg1 arg2 arg3...
+        //printf("shsfhfhfghbjcgbcgbhjchjnchjn\n");
         /* jump to new prog : */
-        if(execvp("ssh",newargv)==-1){
+        if(execvp("ssh",newargv1)==-1){
           perror("execvp");
         };
 
@@ -164,7 +205,11 @@ int main(int argc, char *argv[])
         num_procs_creat++;
       }
     }
+    /*for (i=0;i<num_procs;i++){
+      get_info_std_i(pipefdout[i*2],i);
+      get_info_std_i(pipefdin[i*2],i);
 
+    }*/
     struct info_client info_client[num_procs];
     //FD_SET(sock,&fdsock);
     //sleep(1);
@@ -248,19 +293,67 @@ int main(int argc, char *argv[])
 
   }
 }
-  for (i=0;i<num_procs;i++){
+  /*for (i=0;i<num_procs;i++){
     get_info_std_i(pipefdin[i*2],i);
     get_info_std_i(pipefdout[i*2],i);
-  }
+  }*/
     /* gestion des E/S : on recupere les caracteres */
     /* sur les tubes de redirection de stdout/stderr */
+    fd_set fd_tube;
+    fd_set fd_tube_tmp;
+    FD_ZERO(&fd_tube);
+    int cpt;
+    int max=0;
+    for (cpt=0;cpt<num_procs;cpt++){
+      /*if (pipefdin[cpt*2]>max){
+        max=pipefdin[cpt*2];
+      }*/
+      FD_SET(pipefdin[cpt*2],&fd_tube);
+      if (pipefdin[cpt*2]>max){
+        max=pipefdin[cpt*2];
+      }
+      FD_SET(pipefdout[cpt*2],&fd_tube);
+      if (pipefdout[cpt*2]>max){
+        max=pipefdout[cpt*2];
+      }
+    }
+    while(num_procs>0){
+      int nb_tub=num_procs;
+      printf("%d\n",num_procs );
+        fd_tube_tmp=fd_tube;
+        int nb=select(max+1,&fd_tube_tmp,NULL,NULL,NULL);
+        if(nb==-1){
+          perror("select");
+        };
+        //printf("%d\n",nb );
+        for (i=0;i<nb_tub;i++){
+          if (FD_ISSET(pipefdin[i*2],&fd_tube_tmp)!=0) {
+              if(get_info_std_i(pipefdin[i*2],i)==0){
+              close(pipefdin[i*2]);
+              FD_CLR(pipefdin[i*2],&fd_tube);
+              num_procs--;
+
+              //max
+            }
+            }
+              if (FD_ISSET(pipefdout[i*2],&fd_tube_tmp)!=0) {
+                printf("fdout\n" );
+                if(get_info_std_i(pipefdout[i*2],i)==0){
+                close(pipefdout[i*2]);
+                FD_CLR(pipefdout[i*2],&fd_tube);
+              }
+            }
+          }
+        }
+
+
     /* while(1)
     {
     je recupere les infos sur les tubes de redirection
     jusqu'à ce qu'ils soient inactifs (ie fermes par les
     processus dsm ecrivains de l'autre cote ...)
 
-  };
+  }
   */
 
   /* on attend les processus fils */
@@ -271,6 +364,7 @@ int main(int argc, char *argv[])
   //question path pour executer commande
 
   /* on ferme la socket d'ecoute */
+
   close(sock);
 }
 exit(EXIT_SUCCESS);

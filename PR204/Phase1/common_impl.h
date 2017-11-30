@@ -57,4 +57,4 @@ int do_accept(int sock, struct sockaddr_in *adr_server);
 
 void init_info_client(struct info_client* info_client);
 
-void get_info_std_i(int fd,int i);
+int get_info_std_i(int fd,int i);

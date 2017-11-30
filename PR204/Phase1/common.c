@@ -103,12 +103,26 @@ void init_info_client(struct info_client* info_client){
 }
 
 
-void get_info_std_i(int fd,int i){
+int get_info_std_i(int fd,int i){ //Gérer interruption par signal
 	char * buffer = malloc(sizeof(char)*512); //penser à mettre un taille Variable
-	while(read(fd,buffer,512)!=0){
-	printf("Info du fils de rang i %d:  %s\n",i,buffer);
+	int tmp;
+
+	for(;;){
+
+		tmp=read(fd,buffer,512);
+
+		if (tmp==-1){
+			return -1;
+		}
+		if (tmp==0){
+			return 0;
+		}
+		printf("Info du fils de rang i %d:  %s\n",i,buffer);
+	}
+	return 1;
+
 }
-}
+
 
 
 
