@@ -4,6 +4,14 @@ int DSM_NODE_NUM; /* nombre de processus dsm */
 int DSM_NODE_ID;  /* rang (= numero) du processus */
 
 /* indique l'adresse de debut de la page de numero numpage */
+void init_info_client(struct info_client* info_client){
+	info_client->length_name = 0;
+	info_client->pid =0;
+	info_client->port=0;
+	info_client->rang=0;
+
+}
+
 static char *num2address( int numpage )
 {
    char *pointer = (char *)(BASE_ADDR+(numpage*(PAGE_SIZE)));
@@ -131,20 +139,30 @@ char *dsm_init(int argc, char **argv)
 {
    struct sigaction act;
    int index;
-   int fdconnect=atoi(argv[argc]);
+   int fdconnect=atoi(argv[argc-2]);
+   int sock=atoi(argv[argc-1]);
+printf("dms-init\n" );
+   int i;
 
 
-   int num_procs;
-   if(read(fdconnect,&num_procs,sizeof(int))==-1){
+   /* reception du nombre de processus dsm envoye */
+   /* par le lanceur de programmes (DSM_NODE_NUM)*/
+   if(read(fdconnect,&DSM_NODE_NUM,sizeof(int))==-1){
      perror("read");
    };
 
-   struct info_client info_client[num_procs];
+   struct info_client info_client[DSM_NODE_NUM];
 
-   if(listen(sock , num_procs)==-1){
+   if(listen(sock , DSM_NODE_NUM)==-1){
      perror("listen");
    }
-  for(i = 0; i < num_procs ; i++){
+   /* reception de mon numero de processus dsm envoye */
+   /* par le lanceur de programmes (DSM_NODE_ID)*/
+
+   /* reception des informations de connexion des autres */
+   /* processus envoyees par le lanceur : */
+   /* nom de machine, numero de port, etc. */
+  for(i = 0; i < DSM_NODE_NUM ; i++){
      init_info_client(&(info_client[i]));
      if(read(fdconnect,&(info_client[i].rang),sizeof(int))==-1){
        perror("read");
@@ -173,15 +191,6 @@ char *dsm_init(int argc, char **argv)
    printf("pid:%d\n", info_client[i].pid);
  }
 
-   /* reception du nombre de processus dsm envoye */
-   /* par le lanceur de programmes (DSM_NODE_NUM)*/
-
-   /* reception de mon numero de processus dsm envoye */
-   /* par le lanceur de programmes (DSM_NODE_ID)*/
-
-   /* reception des informations de connexion des autres */
-   /* processus envoyees par le lanceur : */
-   /* nom de machine, numero de port, etc. */
 
    /* initialisation des connexions */
    /* avec les autres processus : connect/accept */

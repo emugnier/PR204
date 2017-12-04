@@ -45,7 +45,7 @@ int main(int argc, char **argv)
    /* processus dsm */
    int sock=creer_socket(0, &port_num, &server_adr);
    write(fdconnect,&port_num,sizeof(int));
-
+/*
    int num_procs;
    if(read(fdconnect,&num_procs,sizeof(int))==-1){
      perror("read");
@@ -65,10 +65,10 @@ int main(int argc, char **argv)
      read(fdconnect,&(info_client[i].length_name),sizeof(int));
      printf("taille nom: %d\n",info_client[i].length_name );
 
-
+*/
 
      /* 2- puis la chaine elle-meme */
-     info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
+  /*   info_client[i].name=malloc(info_client[i].length_name*sizeof(char));
      memset(info_client[i].name,0,info_client[i].length_name*sizeof(char));
      int receive=0;
      char *test=malloc(info_client[i].length_name*sizeof(char));
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 
    read(fdconnect,&(info_client[i].pid),sizeof(int));
    printf("pid:%d\n", info_client[i].pid);
- }
+ }*/
      /* on accepte les connexions des processus dsm */
      /*printf("accept\n" );
      sock_tmp=do_accept(sock,&server_adr);
@@ -100,14 +100,23 @@ int main(int argc, char **argv)
    printf("programme:%s\n",argv[4] );
    printf("test\n" );
    int taille_tab=argc-4;
-   char *newargv1[taille_tab+1];
+   char *newargv1[taille_tab+2];
 
    for(i=4;i<argc;i++){
      newargv1[i-4]=argv[i];
      printf("argv:%s\n",newargv1[i-4] );
    }
-   newargv1[i-4]=fdconnect;
-   newargv1[i-3]=NULL;
+   char* fdco = malloc(sizeof(char)*128);
+   sprintf(fdco,"%d",fdconnect);
+   char* sck = malloc(sizeof(char)*128);
+   sprintf(sck,"%d",sock);
+   newargv1[i-4]=fdco;
+   newargv1[i-3]=sck;
+   newargv1[i-2]=NULL;
+   for( i=0; i<taille_tab+2;i++){
+     printf("argv %s\n",newargv1[i] );
+   }
+   printf("%s\n",newargv1[0] );
    /*
    newargv1[0]=argv[4];
 
@@ -129,5 +138,9 @@ int main(int argc, char **argv)
    if(execvp(argv[4],newargv1)==-1){
      perror("execvp");
    };
+   /*char * ar[]={"ls",NULL};
+   if(execvp("ls",ar)==-1){
+     perror("execvp");
+   };*/
    return 0;
 }
