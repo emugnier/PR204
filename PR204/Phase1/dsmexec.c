@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
         strcpy(newargv1[1],tab[i]);
         newargv1[0]="ssh";
         newargv1[1]=tab[i];
-        newargv1[2]="/net/t/emugnier001/Documents/2a/reseausyst/PR204/Phase1/bin/dsmwrap";
+        newargv1[2]="dsmwrap";
         newargv1[3]=pt;
         newargv1[4]=hostname;
         newargv1[5]=port_char;
@@ -263,7 +263,6 @@ int main(int argc, char *argv[])
 
     for ( i = 0; i < num_procs; i++) {
 
-
     if(write(socket_table[i],&num_procs,sizeof(int))==-1){
       perror("write");
     }
@@ -332,7 +331,6 @@ int main(int argc, char *argv[])
               close(pipefdin[i*2]);
               FD_CLR(pipefdin[i*2],&fd_tube);
               num_procs--;
-
               //max
             }
             }

@@ -100,13 +100,14 @@ int main(int argc, char **argv)
    printf("programme:%s\n",argv[4] );
    printf("test\n" );
    int taille_tab=argc-4;
-   char *newargv1[taille_tab];
+   char *newargv1[taille_tab+1];
 
    for(i=4;i<argc;i++){
      newargv1[i-4]=argv[i];
      printf("argv:%s\n",newargv1[i-4] );
    }
-   newargv1[i-4]=NULL;
+   newargv1[i-4]=fdconnect;
+   newargv1[i-3]=NULL;
    /*
    newargv1[0]=argv[4];
 
