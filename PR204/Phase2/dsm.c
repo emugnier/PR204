@@ -12,6 +12,31 @@ void init_info_client(struct info_client* info_client){
 
 }
 
+int do_socket(int domain, int type, int protocol) {
+	int sock;
+	int yes;
+	if ((sock= socket(AF_INET,SOCK_STREAM, 0))==-1){ //or IPPROTO_TCP à changer AF_INET,SOCK_STREAM, 0
+		perror("creation socket");
+		exit(EXIT_FAILURE);
+	}
+	 if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1){
+				perror("ERROR setting socket options");
+				exit(EXIT_FAILURE);
+	}
+	return sock;
+}
+
+void get_addr_info(char* port, char* address, struct sockaddr_in * adr_server ) {
+
+  struct hostent* res;
+  struct in_addr* addr;
+  res=gethostbyname(address);
+  addr=(struct in_addr*)res->h_addr_list[0];
+  adr_server->sin_addr=*addr;
+  adr_server->sin_family= AF_INET;
+  adr_server->sin_port=htons(atoi(port));
+}
+
 static char *num2address( int numpage )
 {
    char *pointer = (char *)(BASE_ADDR+(numpage*(PAGE_SIZE)));
@@ -150,6 +175,10 @@ printf("dms-init\n" );
    if(read(fdconnect,&DSM_NODE_NUM,sizeof(int))==-1){
      perror("read");
    };
+	 if(read(fdconnect,&DSM_NODE_ID,sizeof(int))==-1){
+     perror("read");
+   };
+	 printf("node_id:%d\n",DSM_NODE_ID );
 
    struct info_client info_client[DSM_NODE_NUM];
 
@@ -191,9 +220,41 @@ printf("dms-init\n" );
    printf("pid:%d\n", info_client[i].pid);
  }
 
+for (i=0; i<DSM_NODE_ID;i++){
+	struct sockaddr_in adr_server;
+	int sock_con=do_socket(AF_INET,SOCK_STREAM, 0);
+	char* port = malloc(sizeof(char)*128);
+	sprintf(port,"%d",info_client[i].port);
+	get_addr_info(port, info_client[i].name,  &adr_server );
+	int size=sizeof(adr_server);
+	connect(sock_con,&adr_server,size);
+
+}
+
+for(i=0;i<DSM_NODE_NUM-1;i++){
+	struct sockaddr_in adr_client;
+	int size=sizeof(adr_client);
+	accept(sock, (struct sockaddr*)&adr_client,(socklen_t *)&size);
+}
+
+for (i=DSM_NODE_ID+1; i<DSM_NODE_NUM;i++){
+	struct sockaddr_in adr_server;
+	int sock_con=do_socket(AF_INET,SOCK_STREAM, 0);
+	char* port = malloc(sizeof(char)*128);
+	sprintf(port,"%d",info_client[i].port);
+	get_addr_info(port, info_client[i].name,  &adr_server );
+	int size=sizeof(adr_server);
+	connect(sock_con,&adr_server,size);
+
+}
+/*a tester
+développer un tableau de socket pour accept*/
+
 
    /* initialisation des connexions */
    /* avec les autres processus : connect/accept */
+
+
 
    /* Allocation des pages en tourniquet */
    for(index = 0; index < PAGE_NUMBER; index ++){

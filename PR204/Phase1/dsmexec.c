@@ -258,6 +258,7 @@ int main(int argc, char *argv[])
       read(sock_tmp,&(info_client[i].port),sizeof(int));
       printf("NUMERO DE PORT %d\n", info_client[i].port);
       socket_table[i]=sock_tmp;
+      info_client[i].rang=i;
 }
     /* envoi du nombre de processus aux processus dsm*/
 
@@ -266,12 +267,18 @@ int main(int argc, char *argv[])
     if(write(socket_table[i],&num_procs,sizeof(int))==-1){
       perror("write");
     }
+    if(write(socket_table[i],&i,sizeof(int))==-1){
+      perror("write");
+    }
+
 
 
     int j;
 
     for (j=0;j<num_procs;j++){
+      /* zone mise en commentaire
       info_client[j].rang=j;
+      */
       /*envoi des rangs aux processus dsm */
     if(write(socket_table[i],&(info_client[j].rang),sizeof(int))==-1){
       perror("write");
